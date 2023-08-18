@@ -26,13 +26,10 @@ public class MyBot : IChessBot
 
         foreach (Move move in allMoves){
 
-            bool isMate = false;
-            
             board.MakeMove(move);
-            isMate = board.IsInCheckmate();
             
             // Always play checkmate in one
-            if (isMate)
+            if (board.IsInCheckmate())
             {
                 board.UndoMove(move);
                 moveToPlay = move;
