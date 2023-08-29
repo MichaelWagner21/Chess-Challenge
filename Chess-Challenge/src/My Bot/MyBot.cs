@@ -10,28 +10,27 @@ public class MyBot : IChessBot
     bool mySideIsWhite;
     public Move Think(Board board, Timer timer)
     {
+        
         mySideIsWhite = board.IsWhiteToMove;
-
+        int bestMoveFoundValue = -30000;
         Move[] allMoves = board.GetLegalMoves();
 
 
-        // Pick a random move to play if nothing better is found
-        Random rng = new();
-        Move moveToPlay = allMoves[rng.Next(allMoves.Length)];
-        int highestValueCapture = 0;
+        
+        Move moveToPlay = allMoves[0];
 
 
         foreach (Move move in allMoves){
 
             board.MakeMove(move);
+
+
             
-            // Always play checkmate in one
-            if (board.IsInCheckmate())
-            {
-                board.UndoMove(move);
+            if (ValueOfThe(board) > bestMoveFoundValue){
                 moveToPlay = move;
-                break;
+                bestMoveFoundValue = ValueOfThe(board);
             }
+            
 
             Move[] allOpponentMoves = board.GetLegalMoves();
             bool checkmatePreventionFound = true;
@@ -52,25 +51,14 @@ public class MyBot : IChessBot
                 }  
             }
             
-            if (!checkmatePreventionFound){
-                board.UndoMove(move);
+            if (!checkmatePreventionFound && bestMoveFoundValue<20000){
                 moveToPlay = move;
-                break;
+                bestMoveFoundValue = 19999;
             }
+
 
             board.UndoMove(move);
 
-
-
-            // Find highest value capture
-            Piece capturedPiece = board.GetPiece(move.TargetSquare);
-            int capturedPieceValue = pieceValues[(int)capturedPiece.PieceType];
-
-            if (capturedPieceValue > highestValueCapture)
-            {
-                moveToPlay = move;
-                highestValueCapture = capturedPieceValue;
-            }
         }
 
         return moveToPlay;
@@ -80,7 +68,7 @@ public class MyBot : IChessBot
             return 0;
         }
         if (inputBoard.IsInCheckmate()){
-            if (inputBoard.IsWhiteToMove == mySideIsWhite){
+            if (inputBoard.IsWhiteToMove != mySideIsWhite){
                 return 20000;
             }
             else {
