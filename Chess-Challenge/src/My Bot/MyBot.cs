@@ -1,19 +1,16 @@
 ﻿using ChessChallenge.API;
+using ChessChallenge.Application;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System;
 
 public class MyBot : IChessBot
 {
 
     int[] pieceValues = { 0, 100, 300, 300, 500, 900, 10000 };
+    bool mySideIsWhite;
     public Move Think(Board board, Timer timer)
     {
-        int player;
-        if (board.IsWhiteToMove){
-            player = 'W';
-        }
-        else {
-            player = 'B';
-        }
+        mySideIsWhite = board.IsWhiteToMove;
 
         Move[] allMoves = board.GetLegalMoves();
 
@@ -78,7 +75,27 @@ public class MyBot : IChessBot
 
         return moveToPlay;
     }
-    private static int ValueOfThe(Board board){
-        return 0;
+    private int ValueOfThe(Board inputBoard){
+        if (inputBoard.IsDraw()){
+            return 0;
+        }
+        if (inputBoard.IsInCheckmate()){
+            if (inputBoard.IsWhiteToMove == mySideIsWhite){
+                return 20000;
+            }
+            else {
+                return -20000;
+            }
+        }
+        int returnValue = 0;
+        PieceList[] allPieces = inputBoard.GetAllPieceLists();
+        foreach (PieceList pieces in allPieces){
+            int modifier = 1;
+            if (pieces.IsWhitePieceList != mySideIsWhite){
+                modifier = -1;
+            }
+            returnValue+= modifier * pieces.Count * pieceValues[(int)pieces.TypeOfPieceInList];
+        }
+        return returnValue;
     }
 }
