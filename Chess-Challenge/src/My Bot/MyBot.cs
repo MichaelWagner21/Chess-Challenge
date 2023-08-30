@@ -2,6 +2,7 @@
 using ChessChallenge.Application;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System;
+using System.Collections.Generic;
 
 public class MyBot : IChessBot
 {
@@ -10,17 +11,20 @@ public class MyBot : IChessBot
     bool myColor;
     public Move Think(Board board, Timer timer)
     {
-        
+        //Finds out what color I am playing as
         myColor = board.IsWhiteToMove;
-        int bestMoveFoundValue = -30000;
-        Move[] allMoves = board.GetLegalMoves();
+
+        //Ensures some move will be found.
+        int bestMoveFoundValue = int.MinValue;
+
+        //Gets Move List
+        Move[] allMovesList = board.GetLegalMoves();
+
+        //Instantiates moveToPlay
+        Move moveToPlay = allMovesList[0];
 
 
-        
-        Move moveToPlay = allMoves[0];
-
-
-        foreach (Move move in allMoves){
+        foreach (Move move in allMovesList){
 
             board.MakeMove(move);
 
@@ -63,37 +67,83 @@ public class MyBot : IChessBot
 
         return moveToPlay;
     }
+
+
+
+
+
+
+
     private int ValueOfThe(Board inputBoard){
+
+
         bool isMyTurn = inputBoard.IsWhiteToMove == myColor;
+    
+    /*Endgame Eval*/
+        //Returns neutral when drawn
         if (inputBoard.IsDraw()){
             return 0;
         }
+
+        
         if (inputBoard.IsInCheckmate()){
+            //Favorable score when opponent is in checkmate
             if (!isMyTurn){
                 return 20000;
             }
+            //Lower score when we are in checkmate
             else {
                 return -20000;
             }
         }
-        int returnValue = 0;
+
+    /*Material Eval*/
+        //Adds up material
+        int materialValue = 0;
         PieceList[] allPieces = inputBoard.GetAllPieceLists();
         foreach (PieceList pieces in allPieces){
             int modifier = 1;
             if (pieces.IsWhitePieceList != myColor){
                 modifier = -1;
             }
-            returnValue+= modifier * pieces.Count * pieceValues[(int)pieces.TypeOfPieceInList];
+            materialValue+= modifier * pieces.Count * pieceValues[(int)pieces.TypeOfPieceInList];
         }
+
+    /*Threatenings Eval*/
+        //Slightly favors checks
+        int threatValue = 0;
         if (inputBoard.IsInCheck()){
             if (isMyTurn){
-                returnValue-=1;
+                threatValue-=1;
             }
             else {
-                returnValue+=1;
+                threatValue+=1;
             }
         }
-        Square enemyKingSquare = inputBoard.GetKingSquare(!myColor);
-        return returnValue;
+
+    /*Endgame Eval*/
+    int endgameValue = 0;
+        if (inputBoard.PlyCount > 40){
+
+            //Favors"pushing" enemy king to edge of board
+            Square enemyKingSquare = inputBoard.GetKingSquare(!myColor);
+            if (enemyKingSquare.Rank%7 == 0 || enemyKingSquare.File%7 == 0){
+                endgameValue+=10;
+            }
+
+            //Favors pushing pawns
+            PieceList myPawns = inputBoard.GetPieceList((PieceType)1, myColor);
+            for (int pawnIndex = 0; pawnIndex < myPawns.Count; pawnIndex++){
+                int pawnPos = myPawns.GetPiece(pawnIndex).Square.Rank;
+                if (myColor /* is white */){
+                    endgameValue+= pawnPos - 1;
+                }
+                else {
+                    endgameValue+= 6 - pawnPos;
+                }
+            }
+        }
+        
+        return materialValue+threatValue+endgameValue;
     }
 }
