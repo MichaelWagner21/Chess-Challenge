@@ -7,11 +7,11 @@ public class MyBot : IChessBot
 {
 
     int[] pieceValues = { 0, 100, 300, 300, 500, 900, 10000 };
-    bool mySideIsWhite;
+    bool myColor;
     public Move Think(Board board, Timer timer)
     {
         
-        mySideIsWhite = board.IsWhiteToMove;
+        myColor = board.IsWhiteToMove;
         int bestMoveFoundValue = -30000;
         Move[] allMoves = board.GetLegalMoves();
 
@@ -64,11 +64,12 @@ public class MyBot : IChessBot
         return moveToPlay;
     }
     private int ValueOfThe(Board inputBoard){
+        bool isMyTurn = inputBoard.IsWhiteToMove == myColor;
         if (inputBoard.IsDraw()){
             return 0;
         }
         if (inputBoard.IsInCheckmate()){
-            if (inputBoard.IsWhiteToMove != mySideIsWhite){
+            if (!isMyTurn){
                 return 20000;
             }
             else {
@@ -79,11 +80,20 @@ public class MyBot : IChessBot
         PieceList[] allPieces = inputBoard.GetAllPieceLists();
         foreach (PieceList pieces in allPieces){
             int modifier = 1;
-            if (pieces.IsWhitePieceList != mySideIsWhite){
+            if (pieces.IsWhitePieceList != myColor){
                 modifier = -1;
             }
             returnValue+= modifier * pieces.Count * pieceValues[(int)pieces.TypeOfPieceInList];
         }
+        if (inputBoard.IsInCheck()){
+            if (isMyTurn){
+                returnValue-=1;
+            }
+            else {
+                returnValue+=1;
+            }
+        }
+        Square enemyKingSquare = inputBoard.GetKingSquare(!myColor);
         return returnValue;
     }
 }
