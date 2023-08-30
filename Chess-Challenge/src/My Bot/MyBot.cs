@@ -96,7 +96,7 @@ public class MyBot : IChessBot
                 return -20000;
             }
         }
-
+    
     /*Material Eval*/
         //Adds up material
         int materialValue = 0;
@@ -108,6 +108,21 @@ public class MyBot : IChessBot
             }
             materialValue+= modifier * pieces.Count * pieceValues[(int)pieces.TypeOfPieceInList];
         }
+
+    /*Repetition Eval*/
+        int repetitionValue = 0;
+        ulong[] repetitionHistory = inputBoard.GameRepetitionHistory;
+        ulong zobristKey = inputBoard.ZobristKey;
+        foreach(ulong key in repetitionHistory){
+            if (key == zobristKey){
+                repetitionValue-=300;
+            }
+        }
+
+
+
+    /* TODO Development Eval*/
+
 
     /*Threatenings Eval*/
         //Slightly favors checks
@@ -144,6 +159,6 @@ public class MyBot : IChessBot
             }
         }
         
-        return materialValue+threatValue+endgameValue;
+        return materialValue+repetitionValue+threatValue+endgameValue;
     }
 }
