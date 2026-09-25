@@ -1,7 +1,8 @@
-using ChessChallenge.API;
+﻿using ChessChallenge.API;
+using ChessChallenge.Application;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 
 public class MyBot : IChessBot
 {
