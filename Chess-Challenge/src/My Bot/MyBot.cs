@@ -1,10 +1,9 @@
-namespace auto_Bot_575;
 using ChessChallenge.API;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 
-public class Bot_575 : IChessBot
+public class MyBot : IChessBot
 {
     Move bestMove = Move.NullMove;
     int myColor = 0;
