@@ -1,4 +1,9 @@
-﻿using ChessChallenge.API;
+//https://github.com/SebLague/Tiny-Chess-Bot-Challenge-Results/blob/main/Swiss/Results.txt
+//Bot_575 in competition
+//https://github.com/SebLague/Tiny-Chess-Bot-Challenge-Results/blob/main/Bots/Bot_575.cs
+
+
+using ChessChallenge.API;
 using ChessChallenge.Application;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System;
