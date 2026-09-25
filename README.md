@@ -1,7 +1,13 @@
+##Results & Code
+
 The original final product was kept local, as this was a competition. My submitted code and competition results can be found here:
+
 https://github.com/SebLague/Tiny-Chess-Bot-Challenge-Results/blob/main/Swiss/Results.txt
+
 (Bot_575 in competition)
+
 https://github.com/SebLague/Tiny-Chess-Bot-Challenge-Results/blob/main/Bots/Bot_575.cs
+
 
 # Chess Coding Challenge (C#)
 Welcome to the [chess coding challenge](https://youtu.be/iScy18pVR58)! This is a friendly competition in which your goal is to create a small chess bot (in C#) using the framework provided in this repository.
