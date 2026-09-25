@@ -1,164 +1,249 @@
-﻿using ChessChallenge.API;
-using ChessChallenge.Application;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
+namespace auto_Bot_575;
+using ChessChallenge.API;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
-public class MyBot : IChessBot
+public class Bot_575 : IChessBot
 {
-
+    Move bestMove = Move.NullMove;
+    int myColor = 0;
     int[] pieceValues = { 0, 100, 300, 300, 500, 900, 10000 };
-    bool myColor;
+
+
     public Move Think(Board board, Timer timer)
     {
-        //Finds out what color I am playing as
-        myColor = board.IsWhiteToMove;
-
-        //Ensures some move will be found.
-        int bestMoveFoundValue = int.MinValue;
-
-        //Gets Move List
-        Move[] allMovesList = board.GetLegalMoves();
-
-        //Instantiates moveToPlay
-        Move moveToPlay = allMovesList[0];
+        myColor = toColor(board.IsWhiteToMove);
 
 
-        foreach (Move move in allMovesList){
-
-            board.MakeMove(move);
 
 
-            
-            if (ValueOfThe(board) > bestMoveFoundValue){
-                moveToPlay = move;
-                bestMoveFoundValue = ValueOfThe(board);
+        for (int depth = 1; depth <= 50; depth++)
+        {
+            int eval = MiniMax(board, depth, int.MinValue, int.MaxValue, true, 0);
+
+
+            if (timer.MillisecondsElapsedThisTurn >= timer.MillisecondsRemaining / 550)
+            {
+                break;
             }
-            
-
-            Move[] allOpponentMoves = board.GetLegalMoves();
-            bool checkmatePreventionFound = true;
-            foreach (Move opponentMove in allOpponentMoves){
-                checkmatePreventionFound = true;
-                board.MakeMove(opponentMove);
-                Move[] allResponses = board.GetLegalMoves();
-                foreach (Move response in allResponses){
-                    board.MakeMove(response);
-                    if (board.IsInCheckmate()){
-                        checkmatePreventionFound = false;
-                    }
-                    board.UndoMove(response);
-                }
-                board.UndoMove(opponentMove);
-                if (checkmatePreventionFound){
-                    break;
-                }  
-            }
-            
-            if (!checkmatePreventionFound && bestMoveFoundValue<20000){
-                moveToPlay = move;
-                bestMoveFoundValue = 19999;
-            }
-
-
-            board.UndoMove(move);
 
         }
 
-        return moveToPlay;
+
+
+        return bestMove;
+
     }
 
+    private int MiniMax(Board position, int depth, int alpha, int beta, bool maximizingPlayer, int ply)
+    {
+        int optionNum = position.GetLegalMoves().Length;
+        if (depth <= 0 || optionNum == 0)
+        {
+            return ValueOfThe(position, ply);
+        }
+        int eval;
 
+        Move[] possibilities = OrderedMovesOf(position);
+        if (maximizingPlayer)
+        {
+            int maxEval = int.MinValue;
+            Move bestMoveFound = possibilities[0];
+            foreach (Move currentMove in possibilities)
+            {
+                position.MakeMove(currentMove);
+                eval = MiniMax(position, depth - 1, alpha, beta, false, ply + 1);
+                position.UndoMove(currentMove);
 
+                if (eval > maxEval)
+                {
+                    maxEval = eval;
+                    bestMoveFound = currentMove;
+                }
+                alpha = Math.Max(alpha, eval);
+                if (beta <= alpha)
+                {
+                    break;
+                }
+            }
+            bestMove = bestMoveFound;
+            return maxEval;
+        }
+        else
+        {
+            int minEval = int.MaxValue;
+            foreach (Move currentMove in possibilities)
+            {
+                position.MakeMove(currentMove);
+                eval = MiniMax(position, depth - 1, alpha, beta, true, ply + 1);
+                position.UndoMove(currentMove);
 
+                minEval = Math.Min(minEval, eval);
+                beta = Math.Min(beta, eval);
+                if (beta <= alpha)
+                {
+                    break;
+                }
+            }
+            return minEval;
+        }
+    }
 
-
-
-    private int ValueOfThe(Board inputBoard){
-
-
-        bool isMyTurn = inputBoard.IsWhiteToMove == myColor;
-    
-    /*Endgame Eval*/
-        //Returns neutral when drawn
-        if (inputBoard.IsDraw()){
+    private int ValueOfThe(Board position, int numOfMovesInTheFuture)
+    {
+        int turnColor = 2 * Convert.ToInt32(position.IsWhiteToMove) - 1;
+        if (position.IsInCheckmate())
+        {
+            return (1_000_000 - numOfMovesInTheFuture) * -turnColor * myColor;
+        }
+        if (position.IsDraw())
+        {
             return 0;
         }
 
-        
-        if (inputBoard.IsInCheckmate()){
-            //Favorable score when opponent is in checkmate
-            if (!isMyTurn){
-                return 20000;
-            }
-            //Lower score when we are in checkmate
-            else {
-                return -20000;
-            }
-        }
-    
-    /*Material Eval*/
-        //Adds up material
-        int materialValue = 0;
-        PieceList[] allPieces = inputBoard.GetAllPieceLists();
-        foreach (PieceList pieces in allPieces){
-            int modifier = 1;
-            if (pieces.IsWhitePieceList != myColor){
-                modifier = -1;
-            }
-            materialValue+= modifier * pieces.Count * pieceValues[(int)pieces.TypeOfPieceInList];
-        }
 
-    /*Repetition Eval*/
-        int repetitionValue = 0;
-        ulong[] repetitionHistory = inputBoard.GameRepetitionHistory;
-        ulong zobristKey = inputBoard.ZobristKey;
-        foreach(ulong key in repetitionHistory){
-            if (key == zobristKey){
-                repetitionValue-=300;
-            }
+        int material = 0;
+        PieceList[] allPieces = position.GetAllPieceLists();
+        foreach (PieceList pieces in allPieces)
+        {
+            int modifier = 2 * Convert.ToInt32(pieces.IsWhitePieceList) - 1;
+            material += modifier * pieces.Count * pieceValues[(int)pieces.TypeOfPieceInList];
         }
 
 
-
-    /* TODO Development Eval*/
-
-
-    /*Threatenings Eval*/
-        //Slightly favors checks
-        int threatValue = 0;
-        if (inputBoard.IsInCheck()){
-            if (isMyTurn){
-                threatValue-=1;
-            }
-            else {
-                threatValue+=1;
-            }
+        int mobility = 0;
+        Move[] legalMoves = position.GetLegalMoves();
+        Move[] legalResponses = { };
+        mobility += turnColor * legalMoves.Length;
+        if (mobility != 0)
+        {
+            position.MakeMove(legalMoves[0]);
+            legalResponses = position.GetLegalMoves();
+            mobility += -1 * turnColor * legalResponses.Length;
+            position.UndoMove(legalMoves[0]);
         }
 
-    /*Endgame Eval*/
-    int endgameValue = 0;
-        if (inputBoard.PlyCount > 40){
-
-            //Favors"pushing" enemy king to edge of board
-            Square enemyKingSquare = inputBoard.GetKingSquare(!myColor);
-            if (enemyKingSquare.Rank%7 == 0 || enemyKingSquare.File%7 == 0){
-                endgameValue+=10;
-            }
-
-            //Favors pushing pawns
-            PieceList myPawns = inputBoard.GetPieceList((PieceType)1, myColor);
-            for (int pawnIndex = 0; pawnIndex < myPawns.Count; pawnIndex++){
-                int pawnPos = myPawns.GetPiece(pawnIndex).Square.Rank;
-                if (myColor /* is white */){
-                    endgameValue+= pawnPos - 1;
-                }
-                else {
-                    endgameValue+= 6 - pawnPos;
+        int centerControl = 0;
+        List<Square> squaresCovered = new List<Square>();
+        Move[][] allMoves = { legalMoves, legalResponses };
+        for (int i = 0; i < allMoves.Length; i++)
+        {
+            Move[] moveSet = allMoves[i];
+            foreach (Move move in moveSet)
+            {
+                if ((int)move.MovePieceType < (int)PieceType.Rook)
+                {
+                    Square targetedSquare = move.TargetSquare;
+                    squaresCovered.Add(move.StartSquare);
+                    if ((int)move.MovePieceType != 1 /*Pawn*/ || move.IsCapture)
+                    {
+                        squaresCovered.Add(targetedSquare);
+                    }
+                    else if (Math.Abs(targetedSquare.Rank - move.StartSquare.Rank) == 1)
+                    {
+                        if (targetedSquare.File > 0)
+                        {
+                            squaresCovered.Add(new Square(targetedSquare.File - 1, targetedSquare.Rank));
+                        }
+                        if (targetedSquare.File < 7)
+                        {
+                            squaresCovered.Add(new Square(targetedSquare.File + 1, targetedSquare.Rank));
+                        }
+                    }
                 }
             }
+            foreach (Square square in squaresCovered)
+            {
+                if (Math.Abs(3.5 - square.File) < 1)
+                {
+                    centerControl += turnColor * (int)Math.Pow(-1, i);
+                }
+            }
+            squaresCovered.Clear();
         }
-        
-        return materialValue+repetitionValue+threatValue+endgameValue;
+
+        return myColor * 1000 * material + 100 * centerControl + mobility;
+    }
+
+
+    private Move[] OrderedMovesOf(Board position)
+    {
+        List<Move> captures = position.GetLegalMoves(capturesOnly: true).ToList();
+        List<Move> nonCaptures = position.GetLegalMoves().ToList();
+        List<Move> returnMoves = new List<Move>();
+
+        //Below: Creates List Without Captures
+        for (int moveIndex = 0; moveIndex < nonCaptures.Count; moveIndex++)
+        {
+            Move move = nonCaptures[moveIndex];
+            if (move.IsCapture)
+            {
+                nonCaptures.Remove(move);
+                moveIndex--;
+            }
+        }
+
+        int captureNum = captures.Count;
+
+
+        //Moves moves from captures to returnMoves prioritizeing MVV-LVA
+        for (int nthBestMove = 0; nthBestMove < captureNum; nthBestMove++)
+        {
+            int highestScore = int.MinValue;
+            Move highestScoringCapture = Move.NullMove;
+            foreach (Move move in captures)
+            {
+                int moveScore = pieceValues[(int)move.CapturePieceType] - pieceValues[(int)move.MovePieceType]; //MVV-LVA
+                if (moveScore > highestScore)
+                {
+                    highestScore = moveScore;
+                    highestScoringCapture = move;
+                }
+            }
+            if (highestScoringCapture.IsCapture)
+            {
+                returnMoves.Add(highestScoringCapture);
+                captures.Remove(highestScoringCapture);
+            }
+        }
+
+        //Adds prioritized moves to the rest
+        returnMoves.AddRange(nonCaptures);
+
+        //Below: Prioritizes Checks and filters out bad king moves
+        List<Move> filteredKingMoves = new List<Move>();
+        for (int i = 0; i < returnMoves.Count; i++)
+        {
+            Move currentMove = returnMoves[i];
+            position.MakeMove(currentMove);
+
+            if (position.IsInCheck())
+            {
+                returnMoves.Insert(0, currentMove);
+                returnMoves.RemoveAt(i + 1);
+            }
+            else if (!position.IsInCheck() && !currentMove.IsCapture && !currentMove.IsCastles && currentMove.MovePieceType == PieceType.King)
+            {
+                filteredKingMoves.Add(currentMove);
+            }
+            position.UndoMove(currentMove);
+        }
+
+        foreach (Move move in filteredKingMoves)
+        {
+            returnMoves.Remove(move);
+            returnMoves.Add(move);
+        }
+
+
+
+        return returnMoves.ToArray();
+    }
+
+
+    private int toColor(bool isWhite)
+    {
+        return 2 * Convert.ToInt32(isWhite) - 1;
     }
 }
